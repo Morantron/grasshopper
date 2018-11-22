@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+find_up () {
+  path=$(pwd)
+  while [[ "$path" != "" && ! -e "$path/$1" ]]; do
+    path=${path%/*}
+  done
+  echo "$path"
+}
+
+conf_file_path=$(find_up ".grasshopper_rc")
+
+if [[ "$conf_file_path" == "" ]]; then
+  echo ".grasshopper_rc not found in any parent folder"
+  exit 1
+else
+  conf_file_path="$conf_file_path/.grasshopper_rc"
+  cat "$conf_file_path" | awk -f "$CURRENT_DIR/../parse-config.awk" > /tmp/grasshopper_rc
+
+  source /tmp/grasshopper_rc
+  rm -rf /tmp/grasshopper_rc
+
+  guest_path=${grasshopper_path_map[${PWD}]}
+  remote_cmd="${@@Q}"
+
+  if [[ -z $remote_cmd ]]; then
+    ssh_string="bash --login"
+  else
+    ssh_string="bash --login -c \"$remote_cmd\""
+  fi
+
+  if [[ -z "$grasshopper_ssh_host" ]]; then
+    echo "Cannot find remote host in configuration."
+    exit 1
+  fi
+
+  if [[ -z "$remote_cmd" ]]; then
+    ssh -Y "$grasshopper_ssh_host" -t "cd $guest_path; $ssh_string" 2> /dev/null
+  else
+    # TODO well, what happens when command is interactive
+    ssh -Y "$grasshopper_ssh_host" -t "cd $guest_path; $ssh_string" 2> /dev/null | sed "s!$guest_path!.!g"
+  fi
+fi
