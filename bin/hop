@@ -36,10 +36,5 @@ else
     exit 1
   fi
 
-  if [[ -z "$remote_cmd" ]]; then
-    ssh -Y "$grasshopper_ssh_host" -t "cd $guest_path; $ssh_string" 2> /dev/null
-  else
-    # TODO well, what happens when command is interactive
-    ssh -Y "$grasshopper_ssh_host" -t "cd $guest_path; $ssh_string" 2> /dev/null | sed "s!$guest_path!.!g"
-  fi
+  ssh -X "$grasshopper_ssh_host" -t "cd $guest_path; $ssh_string"
 fi
